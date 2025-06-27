@@ -1,7 +1,6 @@
 import React from 'react';
 import { BarChart3, TrendingUp, Award, Users, Download } from 'lucide-react';
-import { useVoting } from '../hooks/useVoting';
-import { useCategories } from '../hooks/useCategories';
+import { useVoting, useCategories } from '../hooks/useApi';
 
 interface VoteStatsPanelProps {
   showExport?: boolean;
@@ -17,7 +16,7 @@ const VoteStatsPanel: React.FC<VoteStatsPanelProps> = ({ showExport = false }) =
       voteStats,
       exportDate: new Date().toISOString(),
       totalVotes: Object.values(voteStats).reduce((total, categoryStats) => {
-        return total + Object.values(categoryStats).reduce((sum, count) => sum + count, 0);
+        return total + categoryStats.nominees.reduce((sum, nominee) => sum + nominee.vote_count, 0);
       }, 0)
     };
     
@@ -34,29 +33,23 @@ const VoteStatsPanel: React.FC<VoteStatsPanelProps> = ({ showExport = false }) =
 
   const getTopNominee = (categoryId: string) => {
     const categoryStats = voteStats[categoryId];
-    if (!categoryStats) return null;
+    if (!categoryStats || !categoryStats.nominees.length) return null;
     
-    let topNominee = '';
-    let maxVotes = 0;
+    const topNominee = categoryStats.nominees.reduce((prev, current) => 
+      current.vote_count > prev.vote_count ? current : prev
+    );
     
-    Object.entries(categoryStats).forEach(([nominee, votes]) => {
-      if (votes > maxVotes) {
-        maxVotes = votes;
-        topNominee = nominee;
-      }
-    });
-    
-    return maxVotes > 0 ? { nominee: topNominee, votes: maxVotes } : null;
+    return topNominee.vote_count > 0 ? topNominee : null;
   };
 
   const getTotalSystemVotes = () => {
     return Object.values(voteStats).reduce((total, categoryStats) => {
-      return total + Object.values(categoryStats).reduce((sum, count) => sum + count, 0);
+      return total + categoryStats.nominees.reduce((sum, nominee) => sum + nominee.vote_count, 0);
     }, 0);
   };
 
-  const getVotingCategories = () => categories.filter(cat => !cat.isAward);
-  const getSpecialAwards = () => categories.filter(cat => cat.isAward);
+  const getVotingCategories = () => categories.filter(cat => !cat.is_award);
+  const getSpecialAwards = () => categories.filter(cat => cat.is_award);
 
   return (
     <div className="space-y-6">
@@ -145,7 +138,7 @@ const VoteStatsPanel: React.FC<VoteStatsPanelProps> = ({ showExport = false }) =
           {getVotingCategories().map((category) => {
             const totalVotes = getTotalCategoryVotes(category.id);
             const topNominee = getTopNominee(category.id);
-            const nominees = category.nominees.map(n => typeof n === 'string' ? n : n.name);
+            const categoryStats = voteStats[category.id];
             
             return (
               <div key={category.id} className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
@@ -161,32 +154,31 @@ const VoteStatsPanel: React.FC<VoteStatsPanelProps> = ({ showExport = false }) =
                         Total votes: <span className="text-blue-600">{totalVotes}</span>
                       </span>
                       <span className="text-gray-500">
-                        Nominees: {nominees.length}
+                        Nominees: {category.nominees.length}
                       </span>
                     </div>
                   </div>
                   {topNominee && (
                     <div className="text-right bg-gradient-to-r from-orange-50 to-yellow-50 p-3 rounded-lg border border-orange-200">
                       <p className="text-sm text-gray-600 mb-1">🏆 Leading:</p>
-                      <p className="font-semibold text-orange-700">{topNominee.nominee}</p>
-                      <p className="text-sm text-orange-600">{topNominee.votes} votes</p>
+                      <p className="font-semibold text-orange-700">{topNominee.nominee_name}</p>
+                      <p className="text-sm text-orange-600">{topNominee.vote_count} votes</p>
                     </div>
                   )}
                 </div>
                 
-                {totalVotes > 0 && nominees.length > 0 ? (
+                {totalVotes > 0 && categoryStats ? (
                   <div className="space-y-3">
-                    {nominees.map((nominee) => {
-                      const votes = voteStats[category.id]?.[nominee] || 0;
-                      const percentage = totalVotes > 0 ? (votes / totalVotes) * 100 : 0;
+                    {categoryStats.nominees.map((nominee) => {
+                      const percentage = totalVotes > 0 ? (nominee.vote_count / totalVotes) * 100 : 0;
                       
                       return (
-                        <div key={nominee} className="bg-gray-50 p-3 rounded-lg">
+                        <div key={nominee.nominee_id} className="bg-gray-50 p-3 rounded-lg">
                           <div className="flex justify-between items-center mb-2">
-                            <span className="font-medium text-gray-800">{nominee}</span>
+                            <span className="font-medium text-gray-800">{nominee.nominee_name}</span>
                             <div className="text-right">
                               <span className="text-sm font-semibold text-gray-700">
-                                {votes} vote{votes !== 1 ? 's' : ''}
+                                {nominee.vote_count} vote{nominee.vote_count !== 1 ? 's' : ''}
                               </span>
                               <span className="text-xs text-gray-500 ml-2">
                                 ({percentage.toFixed(1)}%)
@@ -208,7 +200,7 @@ const VoteStatsPanel: React.FC<VoteStatsPanelProps> = ({ showExport = false }) =
                   </div>
                 ) : (
                   <div className="text-center py-6">
-                    {nominees.length === 0 ? (
+                    {category.nominees.length === 0 ? (
                       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                         <p className="text-yellow-700 font-medium">Awaiting Nominations</p>
                         <p className="text-yellow-600 text-sm mt-1">

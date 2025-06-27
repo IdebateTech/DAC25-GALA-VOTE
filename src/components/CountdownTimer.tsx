@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
-import { useLanguage } from '../hooks/useLanguage';
-import { t } from '../utils/translations';
 
 const CountdownTimer: React.FC = () => {
-  const { language } = useLanguage();
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -33,35 +30,35 @@ const CountdownTimer: React.FC = () => {
   }, []);
 
   return (
-    <div className="rounded-xl p-6 text-white text-center shadow-lg transition-all duration-300" style={{
+    <div className="rounded-xl p-6 text-white text-center shadow-lg" style={{
       background: 'linear-gradient(to right, #eb754f, #f4be68)'
     }}>
       <div className="flex items-center justify-center mb-3">
         <Clock className="w-6 h-6 mr-2" />
-        <h3 className="text-lg font-bold">{t('votingEndsIn', language)}</h3>
+        <h3 className="text-lg font-bold">Voting Ends In</h3>
       </div>
       
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-white bg-opacity-20 rounded-lg p-3">
           <div className="text-2xl font-bold">{timeLeft.days}</div>
-          <div className="text-xs uppercase tracking-wide">{t('days', language)}</div>
+          <div className="text-xs uppercase tracking-wide">Days</div>
         </div>
         <div className="bg-white bg-opacity-20 rounded-lg p-3">
           <div className="text-2xl font-bold">{timeLeft.hours}</div>
-          <div className="text-xs uppercase tracking-wide">{t('hours', language)}</div>
+          <div className="text-xs uppercase tracking-wide">Hours</div>
         </div>
         <div className="bg-white bg-opacity-20 rounded-lg p-3">
           <div className="text-2xl font-bold">{timeLeft.minutes}</div>
-          <div className="text-xs uppercase tracking-wide">{t('minutes', language)}</div>
+          <div className="text-xs uppercase tracking-wide">Minutes</div>
         </div>
         <div className="bg-white bg-opacity-20 rounded-lg p-3">
           <div className="text-2xl font-bold">{timeLeft.seconds}</div>
-          <div className="text-xs uppercase tracking-wide">{t('seconds', language)}</div>
+          <div className="text-xs uppercase tracking-wide">Seconds</div>
         </div>
       </div>
       
       <p className="text-sm mt-4 opacity-90">
-        {t('votingDeadline', language)}
+        July 10, 2025 at 11:59 PM
       </p>
     </div>
   );

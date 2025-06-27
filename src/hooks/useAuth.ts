@@ -1,36 +1,25 @@
 import { useState, useEffect } from 'react';
-
-interface AdminCredentials {
-  username: string;
-  password: string;
-}
-
-// Secure admin credentials (in production, this would be handled by a proper backend)
-const ADMIN_CREDENTIALS: AdminCredentials = {
-  username: 'dreamers_admin',
-  password: 'DAC2025_Gala_Admin!'
-};
+import { authApi, User } from '../services/api';
 
 export const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const checkAuth = () => {
-      const authToken = localStorage.getItem('dreamers-admin-token');
-      const authExpiry = localStorage.getItem('dreamers-admin-expiry');
+      const token = localStorage.getItem('dreamers-auth-token');
+      const userData = localStorage.getItem('dreamers-user-data');
       
-      if (authToken && authExpiry) {
-        const expiryTime = parseInt(authExpiry);
-        const currentTime = Date.now();
-        
-        if (currentTime < expiryTime) {
+      if (token && userData) {
+        try {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
           setIsAuthenticated(true);
-        } else {
-          // Token expired, clear storage
-          localStorage.removeItem('dreamers-admin-token');
-          localStorage.removeItem('dreamers-admin-expiry');
-          setIsAuthenticated(false);
+        } catch (error) {
+          console.error('Failed to parse user data:', error);
+          localStorage.removeItem('dreamers-auth-token');
+          localStorage.removeItem('dreamers-user-data');
         }
       }
       
@@ -41,49 +30,65 @@ export const useAuth = () => {
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-      const token = btoa(`${username}:${Date.now()}`);
-      const expiry = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
+    try {
+      setIsLoading(true);
+      const response = await authApi.login(username, password);
       
-      localStorage.setItem('dreamers-admin-token', token);
-      localStorage.setItem('dreamers-admin-expiry', expiry.toString());
+      if (response.data.success && response.data.data) {
+        const { token, user } = response.data.data;
+        
+        localStorage.setItem('dreamers-auth-token', token);
+        localStorage.setItem('dreamers-user-data', JSON.stringify(user));
+        
+        setUser(user);
+        setIsAuthenticated(true);
+        return true;
+      }
       
-      setIsAuthenticated(true);
+      return false;
+    } catch (error) {
+      console.error('Login failed:', error);
+      return false;
+    } finally {
       setIsLoading(false);
-      return true;
     }
-    
-    setIsLoading(false);
-    return false;
   };
 
-  const logout = () => {
-    // Clear all authentication data
-    localStorage.removeItem('dreamers-admin-token');
-    localStorage.removeItem('dreamers-admin-expiry');
-    setIsAuthenticated(false);
-    
-    // Force a page reload to ensure clean state
-    window.location.reload();
+  const logout = async () => {
+    try {
+      await authApi.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      localStorage.removeItem('dreamers-auth-token');
+      localStorage.removeItem('dreamers-user-data');
+      setUser(null);
+      setIsAuthenticated(false);
+      window.location.reload();
+    }
   };
 
-  const extendSession = () => {
-    if (isAuthenticated) {
-      const expiry = Date.now() + (24 * 60 * 60 * 1000); // Extend by 24 hours
-      localStorage.setItem('dreamers-admin-expiry', expiry.toString());
+  const refreshToken = async () => {
+    try {
+      const response = await authApi.refreshToken();
+      if (response.data.success && response.data.data) {
+        localStorage.setItem('dreamers-auth-token', response.data.data.token);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      logout();
+      return false;
     }
   };
 
   return {
     isAuthenticated,
+    user,
     isLoading,
     login,
     logout,
-    extendSession
+    refreshToken
   };
 };
