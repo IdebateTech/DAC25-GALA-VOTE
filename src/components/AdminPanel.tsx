@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Users, BarChart3, Plus, Trash2, Edit, LogOut, Shield, Clock, Save, AlertCircle, Camera } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { useCategories } from '../hooks/useCategories';
+import { useCategories } from '../hooks/useApi';
 import VoteStatsPanel from './VoteStatsPanel';
 import PhotoUpload from './PhotoUpload';
 
