@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import jwt from 'jsonwebtoken';
 import { DatabaseManager } from './database/DatabaseManager.js';
 import { AuthController } from './controllers/AuthController.js';
 import { CategoryController } from './controllers/CategoryController.js';
@@ -19,11 +20,30 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = createServer(app);
+
+// Dynamic CORS configuration for development
+const corsOptions = {
+  origin: (origin, callback) => {
+    // In production, only allow specific origins
+    if (process.env.NODE_ENV === 'production') {
+      // Add your production domains here
+      const allowedOrigins = ['https://yourdomain.com'];
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    } else {
+      // In development, allow any origin (including webcontainer dynamic URLs)
+      callback(null, true);
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE"]
+};
+
 const io = new Server(server, {
-  cors: {
-    origin: process.env.NODE_ENV === 'production' ? false : "http://localhost:5173",
-    methods: ["GET", "POST", "PUT", "DELETE"]
-  }
+  cors: corsOptions
 });
 
 // Initialize database
@@ -43,10 +63,7 @@ app.use(helmet({
   }
 }));
 
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? false : "http://localhost:5173",
-  credentials: true
-}));
+app.use(cors(corsOptions));
 
 // Rate limiting
 const limiter = rateLimit({
